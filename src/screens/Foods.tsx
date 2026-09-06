@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useStore, FREE_SAVED_FOOD_LIMIT } from "../lib/store";
+import { useStore } from "../lib/store";
+import { FREE_LIMITS } from "../lib/entitlements";
 import { fmtDate } from "../components/ui";
 import { Sheet, SheetHeader } from "../components/ui";
 import { allergenById } from "../lib/allergens";
@@ -15,22 +16,22 @@ export function Foods({
   onCheck: () => void;
   onUpgrade: () => void;
 }) {
-  const { state, dispatch } = useStore();
+  const { active, dispatch, ent } = useStore();
+  const foods = active.foods;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | Verdict>("all");
   const [detail, setDetail] = useState<FoodEntry | null>(null);
 
   const filtered = useMemo(() => {
-    return state.foods.filter((f) => {
+    return foods.filter((f) => {
       if (filter !== "all" && f.verdict !== filter) return false;
       if (query && !f.name.toLowerCase().includes(query.toLowerCase()))
         return false;
       return true;
     });
-  }, [state.foods, query, filter]);
+  }, [foods, query, filter]);
 
-  const nearLimit =
-    !state.profile.isPro && state.foods.length >= FREE_SAVED_FOOD_LIMIT - 2;
+  const nearLimit = !ent.isPro && foods.length >= FREE_LIMITS.savedFoods - 2;
 
   return (
     <div className="screen">
@@ -38,7 +39,7 @@ export function Foods({
         <div>
           <div className="screen-title">Food history</div>
           <div className="screen-sub">
-            {state.foods.length} food{state.foods.length === 1 ? "" : "s"} checked
+            {foods.length} food{foods.length === 1 ? "" : "s"} checked
           </div>
         </div>
       </div>
@@ -95,7 +96,7 @@ export function Foods({
           <div className="row">
             <CrownIcon size={20} />
             <div className="tiny" style={{ color: "var(--caution)", fontWeight: 600 }}>
-              You've saved {state.foods.length} of {FREE_SAVED_FOOD_LIMIT} free foods.
+              You've saved {foods.length} of {FREE_LIMITS.savedFoods} free foods.
               Upgrade to Pro for unlimited history.
             </div>
           </div>
@@ -106,9 +107,9 @@ export function Foods({
         <div className="empty">
           <div className="big">🍽️</div>
           <p style={{ fontWeight: 600, color: "var(--ink-soft)" }}>
-            {state.foods.length === 0 ? "No foods checked yet" : "No matches"}
+            {foods.length === 0 ? "No foods checked yet" : "No matches"}
           </p>
-          {state.foods.length === 0 && (
+          {foods.length === 0 && (
             <button className="btn sm" style={{ margin: "14px auto 0" }} onClick={onCheck}>
               Check your first food
             </button>
@@ -170,7 +171,7 @@ export function Foods({
                   Flagged allergens
                 </div>
                 {detail.flagged.map((id) => {
-                  const ua = state.allergens.find((a) => a.id === id);
+                  const ua = active.allergens.find((a) => a.id === id);
                   const def = allergenById(id);
                   return (
                     <div className="row" key={id} style={{ padding: "6px 0" }}>

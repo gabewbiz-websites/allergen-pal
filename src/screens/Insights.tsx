@@ -3,8 +3,8 @@ import { useStore } from "../lib/store";
 import { CrownIcon, LockIcon } from "../components/icons";
 
 export function Insights({ onUpgrade }: { onUpgrade: () => void }) {
-  const { state } = useStore();
-  const { reactions, foods, profile } = state;
+  const { active, ent } = useStore();
+  const { reactions, foods } = active;
 
   const triggers = useMemo(() => {
     const counts = new Map<string, number>();
@@ -56,10 +56,10 @@ export function Insights({ onUpgrade }: { onUpgrade: () => void }) {
         </div>
       </div>
 
-      <div style={profile.isPro ? undefined : { position: "relative" }}>
+      <div style={ent.isPro ? undefined : { position: "relative" }}>
         <div
           style={
-            profile.isPro
+            ent.isPro
               ? undefined
               : { filter: "blur(5px)", pointerEvents: "none", userSelect: "none" }
           }
@@ -131,7 +131,7 @@ export function Insights({ onUpgrade }: { onUpgrade: () => void }) {
           </div>
         </div>
 
-        {!profile.isPro && (
+        {!ent.isPro && (
           <div
             style={{
               position: "absolute",

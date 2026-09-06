@@ -2,6 +2,7 @@ import { useStore } from "../lib/store";
 import { relTime } from "../components/ui";
 import { SearchIcon, ChartIcon, ShieldIcon, CrownIcon } from "../components/icons";
 import type { Tab } from "../App";
+import { ProfileSwitcher } from "../components/ProfileSwitcher";
 
 export function Home({
   onCheck,
@@ -12,24 +13,23 @@ export function Home({
   onUpgrade: () => void;
   go: (tab: Tab) => void;
 }) {
-  const { state } = useStore();
-  const { profile, allergens, foods, reactions } = state;
+  const { state, active, ent } = useStore();
+  const { allergens, foods, reactions } = active;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const severeCount = allergens.filter((a) => a.severity === "severe").length;
   const recent = foods.slice(0, 3);
+  const name = active.profile.relation === "self" ? active.profile.name : active.profile.name;
 
   return (
     <div className="screen">
       <div className="screen-head">
         <div>
           <div className="screen-sub">{greeting}</div>
-          <div className="screen-title">
-            {profile.displayName || "Welcome"} 👋
-          </div>
+          <div className="screen-title">{name || "Welcome"} 👋</div>
         </div>
-        {profile.isPro ? (
+        {ent.isPro ? (
           <span className="pro-badge">
             <CrownIcon size={13} /> PRO
           </span>
@@ -39,6 +39,8 @@ export function Home({
           </button>
         )}
       </div>
+
+      {state.profiles.length > 1 && <ProfileSwitcher onUpgrade={onUpgrade} />}
 
       <button
         className="card"
@@ -69,7 +71,7 @@ export function Home({
         <div>
           <div style={{ fontWeight: 800, fontSize: 18 }}>Check a food</div>
           <div style={{ opacity: 0.9, fontSize: 13 }}>
-            Scan ingredients for hidden allergens
+            Scan or paste ingredients for hidden allergens
           </div>
         </div>
       </button>
@@ -106,7 +108,7 @@ export function Home({
         </button>
       ) : (
         <div className="card">
-          <div className="spread" style={{ marginBottom: allergens.length ? 12 : 0 }}>
+          <div className="spread" style={{ marginBottom: 12 }}>
             <span className="tiny muted">
               {severeCount > 0
                 ? `${severeCount} severe · strictly avoid`
@@ -161,7 +163,7 @@ export function Home({
               <div className="tiny muted">Spot your reaction patterns</div>
             </div>
           </div>
-          {!profile.isPro && (
+          {!ent.isPro && (
             <span className="pro-badge">
               <CrownIcon size={12} /> PRO
             </span>

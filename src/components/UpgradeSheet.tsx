@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useStore } from "../lib/store";
 import { Sheet } from "./ui";
 import { CrownIcon } from "./icons";
+import { useBilling } from "../lib/useBilling";
+import { BILLING } from "../lib/billing";
+import type { Plan } from "../lib/types";
 
 const FEATURES = [
   { fi: "📊", title: "Trends & insights", desc: "See which allergens trigger you most and spot patterns over time." },
@@ -10,8 +12,6 @@ const FEATURES = [
   { fi: "👨‍👩‍👧", title: "Family profiles", desc: "Track allergens for your kids and loved ones in one place." },
   { fi: "☁️", title: "Cloud backup", desc: "Keep your data safe and synced across your devices." },
 ];
-
-type Plan = "monthly" | "yearly";
 
 export function UpgradeSheet({
   open,
@@ -22,13 +22,22 @@ export function UpgradeSheet({
   onClose: () => void;
   reason?: string;
 }) {
-  const { dispatch } = useStore();
+  const { startCheckout } = useBilling();
   const [plan, setPlan] = useState<Plan>("yearly");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function purchase() {
-    // Monetization hook: replace with Stripe / RevenueCat / App Store IAP.
-    // The `isPro` flag is the single gate every premium feature reads.
-    dispatch({ type: "setPro", isPro: true });
+  async function purchase() {
+    setBusy(true);
+    setError(null);
+    // In simulated mode this starts a local trial; in Stripe mode it hands off
+    // to Stripe Checkout (which redirects away).
+    const res = await startCheckout(plan);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Something went wrong. Please try again.");
+      return;
+    }
     onClose();
   }
 
@@ -65,24 +74,38 @@ export function UpgradeSheet({
           selected={plan === "yearly"}
           onClick={() => setPlan("yearly")}
           title="Yearly"
-          price="$29.99 / yr"
-          sub="Just $2.50/mo · Save 50%"
+          price={`${BILLING.prices.yearly.amount} / yr`}
+          sub={`Just ${BILLING.prices.yearly.perMonth}/mo · Save ${BILLING.prices.yearly.savingsPct}%`}
           badge="Best value"
         />
         <PlanOption
           selected={plan === "monthly"}
           onClick={() => setPlan("monthly")}
           title="Monthly"
-          price="$4.99 / mo"
+          price={`${BILLING.prices.monthly.amount} / mo`}
           sub="Billed monthly · cancel anytime"
         />
       </div>
 
-      <button className="btn gold" style={{ marginTop: 16 }} onClick={purchase}>
-        Start 7-day free trial
+      <button
+        className="btn gold"
+        style={{ marginTop: 16 }}
+        onClick={purchase}
+        disabled={busy}
+      >
+        {busy ? "Starting…" : `Start ${BILLING.trialDays}-day free trial`}
       </button>
+      {error && (
+        <p className="tiny" style={{ textAlign: "center", marginTop: 10, color: "var(--avoid)" }}>
+          {error}
+        </p>
+      )}
       <p className="tiny muted" style={{ textAlign: "center", marginTop: 10 }}>
-        Then {plan === "yearly" ? "$29.99/year" : "$4.99/month"}. Cancel anytime.
+        Then{" "}
+        {plan === "yearly"
+          ? `${BILLING.prices.yearly.amount}/year`
+          : `${BILLING.prices.monthly.amount}/month`}
+        . Cancel anytime.
       </p>
       <button
         className="btn ghost"

@@ -2,7 +2,16 @@ export type Severity = "mild" | "moderate" | "severe";
 
 export type Verdict = "safe" | "caution" | "avoid";
 
-/** A user's sensitivity to a specific allergen. */
+/** A person whose allergens we track. The first one is the account owner. */
+export interface Profile {
+  id: string;
+  name: string;
+  emoji: string;
+  /** "self" for the owner, else a family member. */
+  relation: "self" | "family";
+}
+
+/** A profile's sensitivity to a specific allergen. */
 export interface UserAllergen {
   /** Allergen catalog id, or a custom slug. */
   id: string;
@@ -23,6 +32,10 @@ export interface FoodEntry {
   flagged: string[];
   verdict: Verdict;
   notes?: string;
+  /** Barcode this was looked up from, if any. */
+  barcode?: string;
+  /** Brand from a product lookup, if any. */
+  brand?: string;
   createdAt: number;
   favorite?: boolean;
 }
@@ -48,16 +61,54 @@ export interface EmergencyInfo {
   notes: string;
 }
 
-export interface Profile {
-  displayName: string;
-  onboarded: boolean;
-  isPro: boolean;
-  emergency: EmergencyInfo;
-}
-
-export interface AppState {
-  profile: Profile;
+/** All the data that belongs to a single profile. */
+export interface ProfileData {
   allergens: UserAllergen[];
   foods: FoodEntry[];
   reactions: ReactionEntry[];
+  emergency: EmergencyInfo;
+}
+
+export type Plan = "monthly" | "yearly";
+
+export type SubscriptionStatus =
+  | "none" // free, never subscribed
+  | "trialing" // in free trial
+  | "active" // paying
+  | "canceled" // will lapse at period end
+  | "expired"; // trial/sub ended
+
+export type BillingProvider = "simulated" | "stripe";
+
+export interface Subscription {
+  status: SubscriptionStatus;
+  plan: Plan | null;
+  provider: BillingProvider;
+  /** epoch ms the current paid/trial period ends. */
+  currentPeriodEnd: number | null;
+  /** epoch ms the trial ends (during trialing). */
+  trialEnd: number | null;
+  /** true once the user asked to cancel; access remains until period end. */
+  cancelAtPeriodEnd: boolean;
+  /** Stripe identifiers when provider === "stripe". */
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+}
+
+/** Signed-in account, or guest when userId is null. */
+export interface Account {
+  userId: string | null;
+  email: string | null;
+  /** last time cloud sync completed. */
+  lastSyncedAt: number | null;
+}
+
+export interface AppState {
+  account: Account;
+  subscription: Subscription;
+  onboarded: boolean;
+  profiles: Profile[];
+  activeProfileId: string;
+  /** profileId -> that profile's data. */
+  data: Record<string, ProfileData>;
 }

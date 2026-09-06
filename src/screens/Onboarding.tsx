@@ -43,7 +43,7 @@ export function Onboarding() {
     });
     dispatch({
       type: "completeOnboarding",
-      displayName: name.trim(),
+      name: name.trim(),
       allergens,
     });
   }

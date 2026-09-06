@@ -13,7 +13,8 @@ const SYMPTOMS = [
 const SEVERITIES: Severity[] = ["mild", "moderate", "severe"];
 
 export function Reactions() {
-  const { state, dispatch } = useStore();
+  const { active, dispatch } = useStore();
+  const reactions = active.reactions;
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<ReactionEntry | null>(null);
 
@@ -29,7 +30,7 @@ export function Reactions() {
         </button>
       </div>
 
-      {state.reactions.length === 0 ? (
+      {reactions.length === 0 ? (
         <div className="empty">
           <div className="big">📝</div>
           <p style={{ fontWeight: 600, color: "var(--ink-soft)" }}>
@@ -44,7 +45,7 @@ export function Reactions() {
         </div>
       ) : (
         <div className="card">
-          {state.reactions.map((r) => (
+          {reactions.map((r) => (
             <button
               key={r.id}
               className="item"
@@ -119,7 +120,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function LogReaction({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, dispatch } = useStore();
+  const { active, dispatch } = useStore();
   const [severity, setSeverity] = useState<Severity>("mild");
   const [trigger, setTrigger] = useState("");
   const [symptoms, setSymptoms] = useState<string[]>([]);
@@ -157,7 +158,7 @@ function LogReaction({ open, onClose }: { open: boolean; onClose: () => void }) 
     onClose();
   }
 
-  const triggerSuggestions = state.allergens.map((a) => a.label);
+  const triggerSuggestions = active.allergens.map((a) => a.label);
 
   return (
     <Sheet open={open} onClose={onClose}>

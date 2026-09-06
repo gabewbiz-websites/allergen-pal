@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { ALLERGEN_CATALOG } from "../lib/allergens";
 import { useStore } from "../lib/store";
-import type { Severity, UserAllergen } from "../lib/types";
-import { Sheet, SheetHeader } from "../components/ui";
+import { useAuth } from "../lib/auth";
+import { useBilling } from "../lib/useBilling";
+import type { EmergencyInfo, Severity, UserAllergen } from "../lib/types";
+import { Sheet, SheetHeader, fmtDate } from "../components/ui";
 import { CrownIcon, ShareIcon, ShieldIcon } from "../components/icons";
+import { ProfileSwitcher } from "../components/ProfileSwitcher";
+import { AccountSheet } from "../components/AccountSheet";
 
 const SEVERITIES: Severity[] = ["mild", "moderate", "severe"];
 
@@ -14,27 +18,30 @@ export function Profile({
   onUpgrade: () => void;
   onToast: (m: string) => void;
 }) {
-  const { state, dispatch } = useStore();
-  const { profile, allergens } = state;
+  const { state, active, ent, dispatch } = useStore();
+  const { email, signOut, syncNow, cloudEnabled } = useAuth();
+  const { cancelSubscription, resumeSubscription, manageBilling } = useBilling();
   const [editAllergens, setEditAllergens] = useState(false);
   const [editEmergency, setEditEmergency] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState(false);
+
+  const allergens = active.allergens;
 
   function shareCard() {
-    if (!profile.isPro) {
+    if (!ent.canExportEmergencyCard) {
       onUpgrade();
       return;
     }
-    const e = profile.emergency;
+    const e = active.emergency;
     const lines = [
       "🚨 ALLERGY EMERGENCY CARD",
       "",
-      `Name: ${e.fullName || profile.displayName || "—"}`,
+      `Name: ${e.fullName || active.profile.name || "—"}`,
       "",
       "ALLERGIES:",
       ...(allergens.length
-        ? allergens.map(
-            (a) => `  • ${a.label} (${a.severity})`,
-          )
+        ? allergens.map((a) => `  • ${a.label} (${a.severity})`)
         : ["  • None listed"]),
       "",
       e.medications ? `Medications: ${e.medications}` : "",
@@ -48,7 +55,6 @@ export function Profile({
       "— Made with Allergen Pal",
     ].filter(Boolean);
     const text = lines.join("\n");
-
     if (navigator.share) {
       navigator.share({ title: "Allergy Emergency Card", text }).catch(() => {});
     } else {
@@ -63,61 +69,139 @@ export function Profile({
     <div className="screen">
       <div className="screen-head">
         <div className="screen-title">Profile</div>
-        {profile.isPro && (
+        {ent.isPro && (
           <span className="pro-badge">
             <CrownIcon size={13} /> PRO
           </span>
         )}
       </div>
 
-      <div className="card row" style={{ gap: 14 }}>
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "var(--teal-tint)",
-            color: "var(--teal-dark)",
-            display: "grid",
-            placeItems: "center",
-            fontSize: 24,
-            fontWeight: 800,
-          }}
-        >
-          {(profile.displayName || "?").charAt(0).toUpperCase()}
-        </div>
-        <div className="grow">
-          <div style={{ fontWeight: 800, fontSize: 18 }}>
-            {profile.displayName || "Your profile"}
-          </div>
-          <div className="tiny muted">
-            {allergens.length} allergen{allergens.length === 1 ? "" : "s"} tracked
-          </div>
-        </div>
+      {/* Account */}
+      <div className="card">
+        {email ? (
+          <>
+            <div className="row" style={{ gap: 14 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "var(--teal-tint)",
+                  color: "var(--teal-dark)",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 20,
+                  fontWeight: 800,
+                }}
+              >
+                {email.charAt(0).toUpperCase()}
+              </div>
+              <div className="grow" style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {email}
+                </div>
+                <div className="tiny muted">
+                  {state.account.lastSyncedAt
+                    ? `Synced ${fmtDate(state.account.lastSyncedAt)}`
+                    : "Cloud sync on"}
+                </div>
+              </div>
+            </div>
+            <div className="row" style={{ gap: 10, marginTop: 12 }}>
+              <button className="btn secondary" onClick={() => { syncNow(); onToast("Synced"); }}>
+                Sync now
+              </button>
+              <button className="btn ghost" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="row" style={{ gap: 12 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "var(--teal-tint)",
+                  color: "var(--teal-dark)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                ☁️
+              </div>
+              <div className="grow">
+                <div style={{ fontWeight: 700 }}>Back up & sync</div>
+                <div className="tiny muted">
+                  {cloudEnabled
+                    ? "Sign in to sync across your devices"
+                    : "Using this device only (guest)"}
+                </div>
+              </div>
+            </div>
+            <button
+              className="btn secondary"
+              style={{ marginTop: 12 }}
+              onClick={() => setAccountOpen(true)}
+            >
+              Sign in / Create account
+            </button>
+          </>
+        )}
       </div>
 
-      {!profile.isPro && (
-        <button
-          className="pro-hero"
-          onClick={onUpgrade}
-          style={{ width: "100%", marginTop: 14, textAlign: "center" }}
-        >
-          <div className="crown">
-            <CrownIcon size={36} />
-          </div>
-          <div style={{ fontWeight: 800, fontSize: 20, marginTop: 4 }}>
-            Upgrade to Pro
-          </div>
-          <div style={{ opacity: 0.9, fontSize: 13, marginTop: 4 }}>
-            Insights, unlimited history, emergency card & more
-          </div>
-        </button>
-      )}
+      {/* Subscription */}
+      <div className="section-label">Subscription</div>
+      <SubscriptionCard
+        onUpgrade={onUpgrade}
+        onManage={async () => {
+          const r = await manageBilling();
+          if (!r.ok && r.error) onToast(r.error);
+        }}
+        onCancel={() => {
+          cancelSubscription();
+          onToast("Subscription will end at period close");
+        }}
+        onResume={() => {
+          resumeSubscription();
+          onToast("Subscription resumed");
+        }}
+      />
 
-      <div className="section-label">My allergens</div>
+      {/* Family profiles */}
+      <div className="section-label">Profiles</div>
+      <div className="card">
+        <ProfileSwitcher onUpgrade={onUpgrade} />
+        <div className="spread" style={{ marginTop: 4 }}>
+          <span className="tiny muted">
+            {active.profile.relation === "self"
+              ? "Account owner"
+              : `Editing ${active.profile.name}`}
+          </span>
+          {active.profile.relation === "family" && (
+            <button className="link tiny" onClick={() => setEditProfile(true)}>
+              Edit / remove
+            </button>
+          )}
+        </div>
+        {!ent.isPro && (
+          <p className="tiny muted" style={{ marginTop: 10 }}>
+            Family profiles are a Pro feature.
+          </p>
+        )}
+      </div>
+
+      {/* Allergens */}
+      <div className="section-label">
+        {active.profile.relation === "self"
+          ? "My allergens"
+          : `${active.profile.name}'s allergens`}
+      </div>
       <div className="card">
         {allergens.length === 0 ? (
-          <p className="tiny muted">No allergens yet. Add the ones you react to.</p>
+          <p className="tiny muted">No allergens yet. Add the ones to watch for.</p>
         ) : (
           allergens.map((a) => (
             <div className="spread" key={a.id} style={{ padding: "8px 0" }}>
@@ -138,6 +222,7 @@ export function Profile({
         </button>
       </div>
 
+      {/* Emergency card */}
       <div className="section-label">Emergency card</div>
       <div className="card">
         <div className="row" style={{ marginBottom: 12 }}>
@@ -164,34 +249,19 @@ export function Profile({
             Edit info
           </button>
           <button className="btn" onClick={shareCard}>
-            {!profile.isPro && <CrownIcon size={16} />}
+            {!ent.canExportEmergencyCard && <CrownIcon size={16} />}
             <ShareIcon size={18} /> Share
           </button>
         </div>
       </div>
 
-      <div className="section-label">Account</div>
+      {/* Data */}
+      <div className="section-label">Data</div>
       <div className="card">
-        {profile.isPro ? (
-          <button
-            className="btn ghost"
-            onClick={() => {
-              dispatch({ type: "setPro", isPro: false });
-              onToast("Switched to free plan");
-            }}
-          >
-            Manage subscription
-          </button>
-        ) : (
-          <button className="btn secondary" onClick={onUpgrade}>
-            <CrownIcon size={16} /> See Pro plans
-          </button>
-        )}
         <button
           className="btn danger"
-          style={{ marginTop: 10 }}
           onClick={() => {
-            if (confirm("Erase all your data? This cannot be undone.")) {
+            if (confirm("Erase all data on this device? This cannot be undone.")) {
               dispatch({ type: "reset" });
             }
           }}
@@ -207,23 +277,148 @@ export function Profile({
 
       <ManageAllergens open={editAllergens} onClose={() => setEditAllergens(false)} />
       <EditEmergency open={editEmergency} onClose={() => setEditEmergency(false)} />
+      <EditProfileSheet open={editProfile} onClose={() => setEditProfile(false)} />
+      <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
   );
 }
 
-function ManageAllergens({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, dispatch } = useStore();
-  const [draft, setDraft] = useState<Record<string, Severity>>({});
+function SubscriptionCard({
+  onUpgrade,
+  onManage,
+  onCancel,
+  onResume,
+}: {
+  onUpgrade: () => void;
+  onManage: () => void;
+  onCancel: () => void;
+  onResume: () => void;
+}) {
+  const { subscription: sub, provider } = useBilling();
+  const { ent } = useStore();
 
-  // Seed draft from current state whenever opened.
-  function seed() {
-    const d: Record<string, Severity> = {};
-    for (const a of state.allergens) d[a.id] = a.severity;
-    return d;
+  if (!ent.isPro) {
+    return (
+      <button
+        className="pro-hero"
+        onClick={onUpgrade}
+        style={{ width: "100%", textAlign: "center" }}
+      >
+        <div className="crown">
+          <CrownIcon size={36} />
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 20, marginTop: 4 }}>
+          Upgrade to Pro
+        </div>
+        <div style={{ opacity: 0.9, fontSize: 13, marginTop: 4 }}>
+          Insights, unlimited history, barcode scan, family & more
+        </div>
+      </button>
+    );
   }
+
+  const planLabel = sub.plan === "yearly" ? "Yearly" : "Monthly";
+  let statusLine = "";
+  if (sub.status === "trialing" && sub.trialEnd)
+    statusLine = `Free trial ends ${fmtDate(sub.trialEnd)}`;
+  else if (sub.status === "canceled" && sub.currentPeriodEnd)
+    statusLine = `Access ends ${fmtDate(sub.currentPeriodEnd)}`;
+  else if (sub.status === "active" && sub.currentPeriodEnd)
+    statusLine = `Renews ${fmtDate(sub.currentPeriodEnd)}`;
+
+  return (
+    <div className="card">
+      <div className="spread">
+        <div>
+          <div className="row" style={{ gap: 8 }}>
+            <span style={{ fontWeight: 800, fontSize: 16 }}>Pro · {planLabel}</span>
+            <span className="pro-badge">
+              <CrownIcon size={12} /> ACTIVE
+            </span>
+          </div>
+          <div className="tiny muted" style={{ marginTop: 4 }}>
+            {statusLine}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        {sub.status === "canceled" ? (
+          <button className="btn secondary" onClick={onResume}>
+            Resume subscription
+          </button>
+        ) : provider === "stripe" ? (
+          <button className="btn secondary" onClick={onManage}>
+            Manage billing
+          </button>
+        ) : (
+          <button className="btn ghost" onClick={onCancel}>
+            Cancel subscription
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { active, dispatch } = useStore();
+  const [name, setName] = useState(active.profile.name);
   const [seeded, setSeeded] = useState(false);
   if (open && !seeded) {
-    setDraft(seed());
+    setName(active.profile.name);
+    setSeeded(true);
+  }
+  if (!open && seeded) setSeeded(false);
+
+  function save() {
+    dispatch({
+      type: "renameProfile",
+      id: active.profile.id,
+      name: name.trim() || "Family member",
+      emoji: active.profile.emoji,
+    });
+    onClose();
+  }
+
+  return (
+    <Sheet open={open} onClose={onClose}>
+      <SheetHeader title="Edit profile" onClose={onClose} />
+      <div className="field">
+        <label>Name</label>
+        <input
+          className="input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <button className="btn" onClick={save}>
+        Save
+      </button>
+      <button
+        className="btn danger"
+        style={{ marginTop: 10 }}
+        onClick={() => {
+          if (confirm(`Remove ${active.profile.name}'s profile and data?`)) {
+            dispatch({ type: "removeProfile", id: active.profile.id });
+            onClose();
+          }
+        }}
+      >
+        Remove this profile
+      </button>
+    </Sheet>
+  );
+}
+
+function ManageAllergens({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { active, dispatch } = useStore();
+  const [draft, setDraft] = useState<Record<string, Severity>>({});
+  const [seeded, setSeeded] = useState(false);
+
+  if (open && !seeded) {
+    const d: Record<string, Severity> = {};
+    for (const a of active.allergens) d[a.id] = a.severity;
+    setDraft(d);
     setSeeded(true);
   }
   if (!open && seeded) setSeeded(false);
@@ -263,7 +458,6 @@ function ManageAllergens({ open, onClose }: { open: boolean; onClose: () => void
                 <span style={{ fontWeight: 700 }}>{a.label}</span>
               </div>
               <span
-                className="check"
                 style={{
                   width: 24,
                   height: 24,
@@ -303,26 +497,25 @@ function ManageAllergens({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function EditEmergency({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, dispatch } = useStore();
-  const e = state.profile.emergency;
-  const [form, setForm] = useState(e);
+  const { active, dispatch } = useStore();
+  const [form, setForm] = useState<EmergencyInfo>(active.emergency);
   const [seeded, setSeeded] = useState(false);
   if (open && !seeded) {
-    setForm(e);
+    setForm(active.emergency);
     setSeeded(true);
   }
   if (!open && seeded) setSeeded(false);
 
-  function set<K extends keyof typeof form>(key: K, val: string) {
+  function set<K extends keyof EmergencyInfo>(key: K, val: string) {
     setForm((p) => ({ ...p, [key]: val }));
   }
 
   function save() {
-    dispatch({ type: "updateProfile", patch: { emergency: form } });
+    dispatch({ type: "setEmergency", emergency: form });
     onClose();
   }
 
-  const fields: { key: keyof typeof form; label: string; ph: string }[] = [
+  const fields: { key: keyof EmergencyInfo; label: string; ph: string }[] = [
     { key: "fullName", label: "Full name", ph: "Jane Doe" },
     { key: "emergencyContactName", label: "Emergency contact", ph: "Contact name" },
     { key: "emergencyContactPhone", label: "Contact phone", ph: "(555) 555-5555" },

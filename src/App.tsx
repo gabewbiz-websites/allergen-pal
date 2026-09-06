@@ -38,7 +38,7 @@ export default function App() {
     setUpgrade({ open: true, reason });
   }
 
-  if (!state.profile.onboarded) {
+  if (!state.onboarded) {
     return (
       <div className="app">
         <Onboarding />
@@ -103,9 +103,9 @@ export default function App() {
       <CheckFood
         open={checkOpen}
         onClose={() => setCheckOpen(false)}
-        onNeedUpgrade={() => {
+        onNeedUpgrade={(reason) => {
           setCheckOpen(false);
-          openUpgrade("You've reached the free limit of saved foods.");
+          openUpgrade(reason ?? "You've reached the free limit of saved foods.");
         }}
         onSaved={setToast}
       />

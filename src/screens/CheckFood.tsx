@@ -4,6 +4,8 @@ import { newId, useStore } from "../lib/store";
 import type { Verdict } from "../lib/types";
 import { Sheet, SheetHeader } from "../components/ui";
 import { SearchIcon } from "../components/icons";
+import { BarcodeScanner } from "../components/BarcodeScanner";
+import type { ProductLookup } from "../lib/openfoodfacts";
 
 const VERDICT_META: Record<
   Verdict,
@@ -34,23 +36,28 @@ export function CheckFood({
 }: {
   open: boolean;
   onClose: () => void;
-  onNeedUpgrade: () => void;
+  onNeedUpgrade: (reason?: string) => void;
   onSaved: (msg: string) => void;
 }) {
-  const { state, dispatch, canSaveFood } = useStore();
+  const { active, dispatch, ent } = useStore();
   const [name, setName] = useState("");
   const [ingredients, setIngredients] = useState("");
+  const [brand, setBrand] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [checked, setChecked] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const flagged = useMemo(
-    () => (checked ? scanIngredients(ingredients, state.allergens) : []),
-    [checked, ingredients, state.allergens],
+    () => (checked ? scanIngredients(ingredients, active.allergens) : []),
+    [checked, ingredients, active.allergens],
   );
-  const verdict = verdictFor(flagged, state.allergens);
+  const verdict = verdictFor(flagged, active.allergens);
 
   function reset() {
     setName("");
     setIngredients("");
+    setBrand("");
+    setBarcode("");
     setChecked(false);
   }
 
@@ -64,9 +71,28 @@ export function CheckFood({
     setChecked(true);
   }
 
+  function openScanner() {
+    if (!ent.canScanBarcode) {
+      onNeedUpgrade("Barcode scanning is a Pro feature.");
+      return;
+    }
+    setScanOpen(true);
+  }
+
+  function onScanResult(p: ProductLookup) {
+    setScanOpen(false);
+    if (p.name) setName(p.name);
+    if (p.brand) setBrand(p.brand);
+    if (p.barcode) setBarcode(p.barcode);
+    if (p.ingredients) {
+      setIngredients(p.ingredients);
+      setChecked(false);
+    }
+  }
+
   function save() {
-    if (!canSaveFood) {
-      onNeedUpgrade();
+    if (!ent.canSaveFood) {
+      onNeedUpgrade("You've reached the free limit of saved foods.");
       return;
     }
     dispatch({
@@ -77,6 +103,8 @@ export function CheckFood({
         ingredients: ingredients.trim(),
         flagged,
         verdict,
+        brand: brand || undefined,
+        barcode: barcode || undefined,
         createdAt: Date.now(),
       },
     });
@@ -90,13 +118,17 @@ export function CheckFood({
     <Sheet open={open} onClose={close}>
       <SheetHeader title="Check a food" onClose={close} />
 
-      {state.allergens.length === 0 && (
+      {active.allergens.length === 0 && (
         <div className="card" style={{ marginBottom: 14, background: "var(--caution-tint)" }}>
           <p className="tiny" style={{ color: "var(--caution)", fontWeight: 600 }}>
             Add your allergens in Profile first so we know what to watch for.
           </p>
         </div>
       )}
+
+      <button className="btn secondary" style={{ marginBottom: 14 }} onClick={openScanner}>
+        📷 Scan barcode{!ent.canScanBarcode ? " (Pro)" : ""}
+      </button>
 
       <div className="field">
         <label>Food or product name</label>
@@ -120,7 +152,7 @@ export function CheckFood({
           }}
         />
         <p className="tiny muted" style={{ marginTop: 6 }}>
-          Tip: copy the ingredients straight off the packaging for the best check.
+          Tip: scan the barcode or copy the ingredients straight off the packaging.
         </p>
       </div>
 
@@ -142,7 +174,7 @@ export function CheckFood({
                 Found in this food
               </div>
               {flagged.map((id) => {
-                const ua = state.allergens.find((a) => a.id === id);
+                const ua = active.allergens.find((a) => a.id === id);
                 const def = allergenById(id);
                 return (
                   <div className="spread" key={id} style={{ padding: "8px 0" }}>
@@ -171,6 +203,12 @@ export function CheckFood({
           </div>
         </>
       )}
+
+      <BarcodeScanner
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onResult={onScanResult}
+      />
     </Sheet>
   );
 }
