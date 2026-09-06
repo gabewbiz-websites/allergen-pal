@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { newId, useStore } from "../lib/store";
 import { useAuth } from "../lib/auth";
+import { AI_MONTHLY } from "../lib/entitlements";
+import { getAiUsageThisMonth } from "../lib/cloud";
 import { Sheet, SheetHeader } from "./ui";
 import { RecipeResult } from "./RecipeResult";
 import { parsePastedRecipe, rewriteRecipe } from "../lib/recipe";
 import {
+  aiEnabled,
   aiRewriteRecipe,
   fetchRecipeFromUrl,
   urlImportEnabled,
@@ -33,6 +36,20 @@ export function ConvertRecipe({
   const [error, setError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<ParsedRecipe | null>(null);
   const [result, setResult] = useState<RewriteResult | null>(null);
+  const [aiUsed, setAiUsed] = useState<number | null>(null);
+
+  const userId = session?.user.id;
+  const aiCap = ent.isPro ? AI_MONTHLY.pro : AI_MONTHLY.free;
+
+  // Show free users how many AI rewrites remain this month.
+  useEffect(() => {
+    if (!open || !aiEnabled || !userId || ent.isPro) return;
+    let live = true;
+    getAiUsageThisMonth(userId).then((n) => live && setAiUsed(n));
+    return () => {
+      live = false;
+    };
+  }, [open, userId, ent.isPro]);
 
   function resetAll() {
     setUrl("");
@@ -77,19 +94,27 @@ export function ConvertRecipe({
   }
 
   async function doAiRewrite() {
-    if (!ent.canUseAiRewrite) {
-      onNeedUpgrade("Smart AI rewrite is a Pro feature.");
+    if (!recipe) return;
+    if (!aiEnabled) {
+      setError(
+        "AI rewrite turns on once the recipe service is configured (see SETUP.md). The swaps above work offline.",
+      );
       return;
     }
-    if (!recipe) return;
     setBusy("Rewriting with AI…");
     setError(null);
     const res = await aiRewriteRecipe(recipe, active.allergens, session?.access_token);
     setBusy(null);
     if (!res.ok || !res.result) {
+      // Out of free rewrites → nudge to Pro. Not signed in → tell them.
+      if (res.code === "quota" && !res.isPro) {
+        onNeedUpgrade(res.error);
+        return;
+      }
       setError(res.error ?? "AI rewrite failed.");
       return;
     }
+    if (!ent.isPro && aiUsed !== null) setAiUsed(aiUsed + 1);
     setResult(res.result);
   }
 
@@ -225,15 +250,24 @@ export function ConvertRecipe({
             </p>
           )}
 
-          {result!.method !== "ai" && (
-            <button
-              className="btn gold"
-              style={{ marginTop: 16 }}
-              onClick={doAiRewrite}
-              disabled={busy !== null}
-            >
-              {busy ?? `✨ Smart AI rewrite${ent.canUseAiRewrite ? "" : " (Pro)"}`}
-            </button>
+          {result!.method !== "ai" && aiEnabled && (
+            <>
+              <button
+                className="btn gold"
+                style={{ marginTop: 16 }}
+                onClick={doAiRewrite}
+                disabled={busy !== null}
+              >
+                {busy ?? "✨ Smart AI rewrite"}
+              </button>
+              <p className="tiny muted" style={{ textAlign: "center", marginTop: 8 }}>
+                {ent.isPro
+                  ? "Unlimited with Pro"
+                  : aiUsed !== null
+                    ? `${Math.max(0, aiCap - aiUsed)} of ${aiCap} free AI rewrites left this month · Pro is unlimited`
+                    : `${aiCap} free AI rewrites/month · Pro is unlimited`}
+              </p>
+            </>
           )}
 
           <div className="row" style={{ marginTop: 10, gap: 10 }}>

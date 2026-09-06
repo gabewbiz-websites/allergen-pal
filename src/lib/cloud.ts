@@ -49,6 +49,19 @@ export async function pull(
   return { doc, subscription };
 }
 
+/** Read the signed-in user's AI-rewrite count for the current month (UTC). */
+export async function getAiUsageThisMonth(userId: string): Promise<number> {
+  if (!supabase) return 0;
+  const period = new Date().toISOString().slice(0, 7);
+  const { data } = await supabase
+    .from("ai_usage")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("period", period)
+    .maybeSingle();
+  return (data?.count as number | undefined) ?? 0;
+}
+
 /** Upsert the user's document. Best-effort; returns success. */
 export async function push(userId: string, doc: SyncDoc): Promise<boolean> {
   if (!supabase) return false;

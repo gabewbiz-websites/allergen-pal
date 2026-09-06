@@ -84,8 +84,10 @@ Stripe):
 supabase functions deploy fetch-recipe   --no-verify-jwt
 supabase functions deploy rewrite-recipe  --no-verify-jwt
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-…
-# optional: pick a cheaper model per conversion (default is claude-opus-5)
-supabase secrets set AI_MODEL=claude-sonnet-5
+# optional overrides:
+supabase secrets set AI_MODEL=claude-haiku-4-5   # default; ~1¢/rewrite
+supabase secrets set AI_FREE_MONTHLY=3           # free AI rewrites per month
+supabase secrets set AI_PRO_MONTHLY=150          # Pro fair-use ceiling
 ```
 
 ```
@@ -93,8 +95,16 @@ VITE_FUNCTIONS_URL=https://<ref>.supabase.co/functions/v1
 ```
 
 Get an Anthropic API key at [console.anthropic.com](https://console.anthropic.com).
-AI rewrite is metered by Anthropic usage — gating it to Pro keeps that cost
-aligned with revenue.
+
+**Cost & quotas.** AI rewrite runs on **Claude Haiku 4.5** by default — a recipe
+rewrite is a bounded transformation, so a small model is plenty and costs about
+**1¢ per rewrite**. The `rewrite-recipe` function meters usage per user per month
+via the `ai_usage` table (created by `schema.sql`): every signed-in user gets
+`AI_FREE_MONTHLY` free rewrites, Pro users get up to `AI_PRO_MONTHLY`. The
+counter is enforced server-side (the browser can't bypass it), and the rule-based
+converter stays unlimited and free for everyone. Blended gross margin at these
+settings is ~90%+. Bump `AI_MODEL` to `claude-sonnet-5` if quality testing wants
+a step up (~2¢/rewrite).
 
 ## Why the split?
 

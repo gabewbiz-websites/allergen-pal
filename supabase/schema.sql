@@ -51,3 +51,43 @@ create policy "own sub read" on public.subscriptions
 
 create index if not exists subscriptions_customer_idx
   on public.subscriptions (stripe_customer_id);
+
+-- ---------------------------------------------------------------------------
+-- ai_usage: per-user, per-month counter for AI recipe rewrites. Enforces the
+-- freemium quota (free gets a few/month, Pro a fair-use ceiling). Written only
+-- by the rewrite-recipe function (service role); users may read their own row
+-- so the UI can show how many rewrites remain.
+-- ---------------------------------------------------------------------------
+create table if not exists public.ai_usage (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  period     text not null,            -- 'YYYY-MM' (UTC)
+  count      integer not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, period)
+);
+
+alter table public.ai_usage enable row level security;
+
+drop policy if exists "own usage read" on public.ai_usage;
+create policy "own usage read" on public.ai_usage
+  for select using (auth.uid() = user_id);
+-- No write policies: only the service role (Edge Function) increments.
+
+-- Atomic increment that upserts the month's row and returns the new count.
+create or replace function public.bump_ai_usage(p_user uuid, p_period text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_count integer;
+begin
+  insert into public.ai_usage (user_id, period, count, updated_at)
+  values (p_user, p_period, 1, now())
+  on conflict (user_id, period)
+  do update set count = public.ai_usage.count + 1, updated_at = now()
+  returning count into new_count;
+  return new_count;
+end;
+$$;

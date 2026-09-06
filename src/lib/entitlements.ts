@@ -8,6 +8,12 @@ export const FREE_LIMITS = {
   monthsOfInsights: 0, // insights are Pro-only
 };
 
+/** Monthly AI-rewrite quotas, enforced server-side (mirrors the Edge Function). */
+export const AI_MONTHLY = {
+  free: 3,
+  pro: 150, // fair-use ceiling; effectively unlimited for real usage
+};
+
 /**
  * A subscription grants Pro access while trialing or active — including after
  * a cancel, up until the period actually ends.

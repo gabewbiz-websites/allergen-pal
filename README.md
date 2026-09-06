@@ -36,8 +36,8 @@ retention and reviews. Pro unlocks power features:
 | | Free | Pro |
 |---|---|---|
 | Recipe conversion (rule-based swaps) | ✅ unlimited | ✅ |
+| AI smart rewrite | 3 / month | unlimited* |
 | Saved recipes | last 5 | unlimited |
-| AI smart rewrite | — | ✅ |
 | Allergen checking & reactions | ✅ unlimited | ✅ |
 | Saved food history | last 10 | unlimited |
 | Barcode scanning | — | ✅ |
@@ -45,6 +45,8 @@ retention and reviews. Pro unlocks power features:
 | Family profiles | 1 | up to 8 |
 | Emergency card export | — | ✅ |
 | Cloud backup & sync | ✅ (account) | ✅ |
+
+<sub>* Pro AI rewrite has a generous fair-use ceiling (150/mo) to bound cost. AI runs on Claude Haiku 4.5 (~1¢/rewrite) and is metered server-side, keeping gross margin ~90%+.</sub>
 
 **Pricing:** $4.99/mo or $29.99/yr, 7-day free trial.
 

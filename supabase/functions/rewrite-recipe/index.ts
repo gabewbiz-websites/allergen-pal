@@ -6,9 +6,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
-// Per Anthropic guidance the default is Opus 5; set AI_MODEL to a cheaper model
-// (e.g. claude-sonnet-5 or claude-haiku-4-5) to reduce per-conversion cost.
-const AI_MODEL = Deno.env.get("AI_MODEL") ?? "claude-opus-5";
+// Recipe rewriting is a bounded transformation, so a small model is plenty and
+// keeps per-conversion cost ~1¢. Override with AI_MODEL (e.g. claude-sonnet-5)
+// if quality testing warrants a step up.
+const AI_MODEL = Deno.env.get("AI_MODEL") ?? "claude-haiku-4-5";
+
+// Monthly AI-rewrite quotas (server-enforced). Free users get a taste; Pro is
+// effectively unlimited with a fair-use ceiling to bound worst-case cost.
+const FREE_MONTHLY = Number(Deno.env.get("AI_FREE_MONTHLY") ?? "3");
+const PRO_MONTHLY = Number(Deno.env.get("AI_PRO_MONTHLY") ?? "150");
 
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -90,12 +96,37 @@ Deno.serve(async (req) => {
   try {
     if (!ANTHROPIC_API_KEY) return json({ error: "AI is not configured." }, 500);
 
-    // Require a signed-in Pro user before spending tokens.
+    // Require a signed-in user so usage can be metered fairly.
     const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     const { data: userData } = await supabaseAdmin.auth.getUser(token);
-    if (!userData?.user) return json({ error: "Please sign in to use AI rewrite." }, 401);
-    if (!(await isProUser(userData.user.id))) {
-      return json({ error: "AI rewrite is a Pro feature." }, 403);
+    if (!userData?.user) {
+      return json({ error: "Sign in to use AI rewrite.", code: "signin" }, 401);
+    }
+    const userId = userData.user.id;
+    const pro = await isProUser(userId);
+    const limit = pro ? PRO_MONTHLY : FREE_MONTHLY;
+
+    // Enforce the monthly quota before spending any tokens.
+    const period = new Date().toISOString().slice(0, 7); // YYYY-MM (UTC)
+    const { data: usageRow } = await supabaseAdmin
+      .from("ai_usage")
+      .select("count")
+      .eq("user_id", userId)
+      .eq("period", period)
+      .maybeSingle();
+    const used = usageRow?.count ?? 0;
+    if (used >= limit) {
+      return json(
+        {
+          code: "quota",
+          isPro: pro,
+          limit,
+          error: pro
+            ? `You've reached this month's fair-use limit (${limit}). It resets next month.`
+            : `You've used your ${limit} free AI rewrites this month. Go Pro for unlimited.`,
+        },
+        429,
+      );
     }
 
     const { recipe, allergens } = await req.json();
@@ -127,6 +158,10 @@ Deno.serve(async (req) => {
       .join("");
     const result = extractJson(text);
     result.method = "ai";
+
+    // Count this successful rewrite against the monthly quota.
+    await supabaseAdmin.rpc("bump_ai_usage", { p_user: userId, p_period: period });
+    result.usage = { used: used + 1, limit, isPro: pro };
     return json(result);
   } catch (e) {
     return json({ error: (e as Error).message }, 500);

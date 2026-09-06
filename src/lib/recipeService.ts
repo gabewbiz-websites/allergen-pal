@@ -3,6 +3,8 @@ import type { ParsedRecipe, RewriteResult, UserAllergen } from "./types";
 const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL ?? "";
 
 export const urlImportEnabled = !!FUNCTIONS_URL;
+/** AI rewrite runs through the same Edge Functions base URL. */
+export const aiEnabled = !!FUNCTIONS_URL;
 
 export interface FetchResult {
   ok: boolean;
@@ -47,6 +49,9 @@ export interface AiRewriteResult {
   ok: boolean;
   result?: RewriteResult;
   error?: string;
+  /** "signin" (not authenticated) or "quota" (monthly limit reached). */
+  code?: string;
+  isPro?: boolean;
 }
 
 /**
@@ -75,7 +80,12 @@ export async function aiRewriteRecipe(
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      return { ok: false, error: body.error ?? `AI rewrite failed (${res.status}).` };
+      return {
+        ok: false,
+        error: body.error ?? `AI rewrite failed (${res.status}).`,
+        code: body.code,
+        isPro: body.isPro,
+      };
     }
     const result = (await res.json()) as RewriteResult;
     return { ok: true, result: { ...result, method: "ai" } };

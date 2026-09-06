@@ -6,7 +6,7 @@ import { BILLING } from "../lib/billing";
 import type { Plan } from "../lib/types";
 
 const FEATURES = [
-  { fi: "✨", title: "AI smart recipe rewrite", desc: "Claude rewrites ingredients, quantities & steps — sharper than the built-in swaps." },
+  { fi: "✨", title: "Unlimited AI smart rewrite", desc: "AI rewrites ingredients, quantities & steps — free gets 3/month, Pro is unlimited." },
   { fi: "♾️", title: "Unlimited saved recipes", desc: "Keep every converted recipe — free saves your last 5." },
   { fi: "📊", title: "Trends & insights", desc: "See which allergens trigger you most and spot patterns over time." },
   { fi: "👨‍👩‍👧", title: "Family profiles", desc: "Convert & track allergens for your kids and loved ones separately." },
