@@ -6,11 +6,12 @@ import { BILLING } from "../lib/billing";
 import type { Plan } from "../lib/types";
 
 const FEATURES = [
+  { fi: "✨", title: "AI smart recipe rewrite", desc: "Claude rewrites ingredients, quantities & steps — sharper than the built-in swaps." },
+  { fi: "♾️", title: "Unlimited saved recipes", desc: "Keep every converted recipe — free saves your last 5." },
   { fi: "📊", title: "Trends & insights", desc: "See which allergens trigger you most and spot patterns over time." },
-  { fi: "♾️", title: "Unlimited food history", desc: "Save every food you check — free keeps your last 10." },
+  { fi: "👨‍👩‍👧", title: "Family profiles", desc: "Convert & track allergens for your kids and loved ones separately." },
+  { fi: "🔎", title: "Barcode scanning", desc: "Scan a product to check it against your allergens instantly." },
   { fi: "🆔", title: "Emergency card export", desc: "Share or print a card with your allergies for schools, sitters & ER." },
-  { fi: "👨‍👩‍👧", title: "Family profiles", desc: "Track allergens for your kids and loved ones in one place." },
-  { fi: "☁️", title: "Cloud backup", desc: "Keep your data safe and synced across your devices." },
 ];
 
 export function UpgradeSheet({

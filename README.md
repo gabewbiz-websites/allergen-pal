@@ -1,24 +1,28 @@
 # Allergen Pal
 
-Your pocket companion for staying safe with food allergies. Set up the
-allergens you (and your family) react to, then check any food's ingredients —
-by barcode or by pasting the label — for hidden allergens, log reactions, and
-keep an emergency card handy.
+Paste a recipe — by link or text — and get it **rewritten to be safe for your
+allergies**, with smart ingredient swaps and a plain-English note on how each
+swap changes the dish. Plus a food-label checker, reaction log, and an
+emergency card.
 
 Built as an installable, offline-first **PWA** with optional cloud accounts and
 real subscription billing.
 
 ## Features
 
-- **Onboarding** — pick your allergens (FDA "big 9" + gluten), set a severity
-  for each (mild / moderate / severe).
-- **Food checker** — **scan a barcode** (Open Food Facts) or paste an ingredient
-  list for an instant **safe / caution / avoid** verdict. Catches hidden names
-  (casein → milk, arachis → peanut, semolina → wheat, and dozens more).
-- **Food history** — saved checks, searchable/filterable, with favorites.
+- **Recipe converter (the core)** — paste a recipe URL or text and get an
+  allergen-safe version. For every unsafe ingredient it picks a substitute that
+  doesn't introduce another of your allergens (milk→oat milk, egg→flax egg,
+  wheat flour→GF blend, peanut butter→sunflower butter…), rewrites the method to
+  match, and shows **what may change** (texture, flavor, bake time).
+- **AI smart rewrite** *(Pro)* — Claude rewrites ingredients, quantities and
+  steps for sharper, recipe-aware results.
+- **Onboarding** — pick your allergens (FDA "big 9" + gluten), set a severity.
+- **Food checker** — scan a barcode (Open Food Facts) or paste a label for an
+  instant **safe / caution / avoid** verdict, catching hidden names.
 - **Reaction log** — severity, symptoms, suspected trigger, date & notes.
 - **Insights** *(Pro)* — reactions over time, top suspected triggers, safe-rate.
-- **Family profiles** *(Pro)* — track allergens separately for kids & loved ones.
+- **Family profiles** *(Pro)* — convert & track allergens separately for kids.
 - **Emergency card** *(Pro)* — share/print allergies, meds & contacts.
 - **Accounts & cloud sync** *(optional)* — Supabase auth + multi-device sync.
 - **Subscriptions** — freemium with a real Stripe-backed billing lifecycle.
@@ -31,6 +35,9 @@ retention and reviews. Pro unlocks power features:
 
 | | Free | Pro |
 |---|---|---|
+| Recipe conversion (rule-based swaps) | ✅ unlimited | ✅ |
+| Saved recipes | last 5 | unlimited |
+| AI smart rewrite | — | ✅ |
 | Allergen checking & reactions | ✅ unlimited | ✅ |
 | Saved food history | last 10 | unlimited |
 | Barcode scanning | — | ✅ |

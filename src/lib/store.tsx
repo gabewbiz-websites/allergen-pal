@@ -14,6 +14,7 @@ import type {
   Profile,
   ProfileData,
   ReactionEntry,
+  SavedRecipe,
   Subscription,
   UserAllergen,
 } from "./types";
@@ -38,7 +39,13 @@ export const emptyEmergency: EmergencyInfo = {
 };
 
 export function emptyProfileData(): ProfileData {
-  return { allergens: [], foods: [], reactions: [], emergency: { ...emptyEmergency } };
+  return {
+    allergens: [],
+    foods: [],
+    reactions: [],
+    recipes: [],
+    emergency: { ...emptyEmergency },
+  };
 }
 
 const SELF_ID = "self";
@@ -66,6 +73,8 @@ type Action =
   | { type: "toggleFavorite"; id: string }
   | { type: "addReaction"; reaction: ReactionEntry }
   | { type: "removeReaction"; id: string }
+  | { type: "addRecipe"; recipe: SavedRecipe }
+  | { type: "removeRecipe"; id: string }
   | { type: "addProfile"; profile: Profile }
   | { type: "removeProfile"; id: string }
   | { type: "renameProfile"; id: string; name: string; emoji: string }
@@ -132,6 +141,16 @@ function reducer(state: AppState, action: Action): AppState {
         ...d,
         reactions: d.reactions.filter((r) => r.id !== action.id),
       }));
+    case "addRecipe":
+      return patchActive(state, (d) => ({
+        ...d,
+        recipes: [action.recipe, ...d.recipes],
+      }));
+    case "removeRecipe":
+      return patchActive(state, (d) => ({
+        ...d,
+        recipes: d.recipes.filter((r) => r.id !== action.id),
+      }));
     case "addProfile":
       return {
         ...state,
@@ -185,6 +204,7 @@ function migrateLegacy(): AppState | null {
       allergens: v1.allergens ?? [],
       foods: v1.foods ?? [],
       reactions: v1.reactions ?? [],
+      recipes: [],
       emergency: { ...emptyEmergency, ...(v1.profile?.emergency ?? {}) },
     };
     if (v1.profile?.isPro) {
@@ -215,6 +235,10 @@ function load(): AppState {
         account: { ...base.account, ...parsed.account },
         subscription: { ...base.subscription, ...parsed.subscription },
       };
+      // Backfill fields added in later versions so older stored data is safe.
+      for (const id of Object.keys(merged.data)) {
+        merged.data[id] = { ...emptyProfileData(), ...merged.data[id] };
+      }
       merged.subscription = reconcile(merged.subscription);
       return merged;
     }

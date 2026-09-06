@@ -65,7 +65,38 @@ That's enough for accounts + sync. Billing stays simulated until step 2.
    "Manage billing" opens the Stripe customer portal. Use Stripe test cards
    (e.g. `4242 4242 4242 4242`) to try the full flow, then switch to live keys.
 
-### Why the split?
+## 3. Recipe service (URL import + AI rewrite)
+
+The recipe converter's **paste-text** path works with zero setup. Two Edge
+Functions add more:
+
+- **`fetch-recipe`** lets users paste a **URL** — it fetches the page
+  server-side (browsers can't, due to CORS) and reads the schema.org recipe
+  data most sites embed. No API key needed.
+- **`rewrite-recipe`** is the **AI "smart rewrite" (Pro)** — it calls Claude to
+  rewrite ingredients, quantities and steps. It verifies the caller is a
+  signed-in Pro user before spending tokens (so it needs steps 1 & 2 above).
+
+Deploy them and set the frontend's `VITE_FUNCTIONS_URL` (same base URL used for
+Stripe):
+
+```bash
+supabase functions deploy fetch-recipe   --no-verify-jwt
+supabase functions deploy rewrite-recipe  --no-verify-jwt
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-…
+# optional: pick a cheaper model per conversion (default is claude-opus-5)
+supabase secrets set AI_MODEL=claude-sonnet-5
+```
+
+```
+VITE_FUNCTIONS_URL=https://<ref>.supabase.co/functions/v1
+```
+
+Get an Anthropic API key at [console.anthropic.com](https://console.anthropic.com).
+AI rewrite is metered by Anthropic usage — gating it to Pro keeps that cost
+aligned with revenue.
+
+## Why the split?
 
 Subscription state lives in the `subscriptions` table and is written **only** by
 the webhook (service role). The browser can read it but never write it, so a

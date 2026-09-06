@@ -61,11 +61,68 @@ export interface EmergencyInfo {
   notes: string;
 }
 
+// ---- Recipes ---------------------------------------------------------------
+
+/** A recipe as fetched from a URL or pasted by the user. */
+export interface ParsedRecipe {
+  title: string;
+  image?: string;
+  sourceUrl?: string;
+  sourceName?: string;
+  servings?: string;
+  totalTime?: string;
+  ingredients: string[];
+  instructions: string[];
+}
+
+export interface IngredientRewrite {
+  original: string;
+  rewritten: string;
+  changed: boolean;
+  allergen?: string;
+  substitute?: string;
+  /** The food term that was matched and replaced (drives step rewriting). */
+  matchedTerm?: string;
+  ratio?: string;
+  note?: string;
+  /** How the dish may turn out differently with this swap. */
+  impact?: string;
+  /** Detected an allergen but had no safe substitute. */
+  unresolved?: boolean;
+}
+
+export interface StepRewrite {
+  original: string;
+  rewritten: string;
+  changed: boolean;
+}
+
+export interface RewriteResult {
+  ingredients: IngredientRewrite[];
+  instructions: StepRewrite[];
+  swapCount: number;
+  /** Allergen ids detected but with no safe substitute. */
+  unresolved: string[];
+  safe: boolean;
+  method: "rules" | "ai";
+  /** Present for AI rewrites: a short summary of what changed. */
+  summary?: string;
+}
+
+export interface SavedRecipe extends ParsedRecipe {
+  id: string;
+  createdAt: number;
+  result: RewriteResult;
+  /** Snapshot of allergen labels this was converted for. */
+  convertedFor: string[];
+}
+
 /** All the data that belongs to a single profile. */
 export interface ProfileData {
   allergens: UserAllergen[];
   foods: FoodEntry[];
   reactions: ReactionEntry[];
+  recipes: SavedRecipe[];
   emergency: EmergencyInfo;
 }
 

@@ -37,11 +37,14 @@ export function Foods({
     <div className="screen">
       <div className="screen-head">
         <div>
-          <div className="screen-title">Food history</div>
+          <div className="screen-title">Check foods</div>
           <div className="screen-sub">
             {foods.length} food{foods.length === 1 ? "" : "s"} checked
           </div>
         </div>
+        <button className="btn sm" onClick={onCheck}>
+          <SearchIcon size={16} /> Check
+        </button>
       </div>
 
       <div

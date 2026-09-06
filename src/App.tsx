@@ -1,28 +1,24 @@
 import { useEffect, useState } from "react";
 import { useStore } from "./lib/store";
 import { Onboarding } from "./screens/Onboarding";
-import { Home } from "./screens/Home";
+import { Recipes } from "./screens/Recipes";
 import { Foods } from "./screens/Foods";
 import { Reactions } from "./screens/Reactions";
 import { Insights } from "./screens/Insights";
 import { Profile } from "./screens/Profile";
 import { CheckFood } from "./screens/CheckFood";
+import { ConvertRecipe } from "./components/ConvertRecipe";
 import { UpgradeSheet } from "./components/UpgradeSheet";
 import { Toast } from "./components/ui";
-import {
-  HomeIcon,
-  ListIcon,
-  PulseIcon,
-  UserIcon,
-  PlusIcon,
-} from "./components/icons";
+import { PulseIcon, UserIcon, SearchIcon } from "./components/icons";
 
-export type Tab = "home" | "foods" | "reactions" | "profile" | "insights";
+export type Tab = "recipes" | "check" | "reactions" | "profile" | "insights";
 
 export default function App() {
   const { state } = useStore();
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>("recipes");
   const [checkOpen, setCheckOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const [upgrade, setUpgrade] = useState<{ open: boolean; reason?: string }>({
     open: false,
   });
@@ -48,42 +44,44 @@ export default function App() {
 
   return (
     <div className="app">
-      {tab === "home" && (
-        <Home
-          onCheck={() => setCheckOpen(true)}
+      {tab === "recipes" && (
+        <Recipes
+          onConvert={() => setConvertOpen(true)}
           onUpgrade={() => openUpgrade()}
           go={setTab}
         />
       )}
-      {tab === "foods" && (
+      {tab === "check" && (
         <Foods onCheck={() => setCheckOpen(true)} onUpgrade={() => openUpgrade()} />
       )}
       {tab === "reactions" && <Reactions />}
-      {tab === "insights" && <Insights onUpgrade={() => openUpgrade("Unlock insights and see your patterns.")} />}
+      {tab === "insights" && (
+        <Insights onUpgrade={() => openUpgrade("Unlock insights and see your patterns.")} />
+      )}
       {tab === "profile" && (
         <Profile onUpgrade={() => openUpgrade()} onToast={setToast} />
       )}
 
       <nav className="tabbar">
         <TabButton
-          label="Home"
-          active={tab === "home"}
-          onClick={() => setTab("home")}
-          icon={<HomeIcon />}
+          label="Recipes"
+          active={tab === "recipes"}
+          onClick={() => setTab("recipes")}
+          icon={<ChefIcon />}
         />
         <TabButton
-          label="Foods"
-          active={tab === "foods"}
-          onClick={() => setTab("foods")}
-          icon={<ListIcon />}
+          label="Check"
+          active={tab === "check"}
+          onClick={() => setTab("check")}
+          icon={<SearchIcon />}
         />
         <div className="tab fab">
           <button
             className="fab-btn"
-            aria-label="Check a food"
-            onClick={() => setCheckOpen(true)}
+            aria-label="Convert a recipe"
+            onClick={() => setConvertOpen(true)}
           >
-            <PlusIcon />
+            <ChefIcon light />
           </button>
         </div>
         <TabButton
@@ -100,6 +98,15 @@ export default function App() {
         />
       </nav>
 
+      <ConvertRecipe
+        open={convertOpen}
+        onClose={() => setConvertOpen(false)}
+        onNeedUpgrade={(reason) => {
+          setConvertOpen(false);
+          openUpgrade(reason);
+        }}
+        onSaved={setToast}
+      />
       <CheckFood
         open={checkOpen}
         onClose={() => setCheckOpen(false)}
@@ -135,5 +142,24 @@ function TabButton({
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function ChefIcon({ light }: { light?: boolean }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={light ? "#fff" : "currentColor"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 21h10" />
+      <path d="M7 21v-6h10v6" />
+      <path d="M17 15a4 4 0 0 0 1-7.9A4.5 4.5 0 0 0 9.5 5 4 4 0 0 0 6 7.1 4 4 0 0 0 7 15" />
+    </svg>
   );
 }
