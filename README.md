@@ -56,7 +56,8 @@ retention and reviews. Pro unlocks power features:
 
 With **no environment variables set**, everything above runs locally in
 guest/simulated mode — the app is fully usable and testable with zero backend.
-See **[SETUP.md](SETUP.md)** to turn on real accounts, sync, and payments.
+See **[SETUP.md](SETUP.md)** to turn on real accounts, sync, and payments, and
+**[DEPLOY.md](DEPLOY.md)** to deploy to Vercel.
 
 ## Development
 
